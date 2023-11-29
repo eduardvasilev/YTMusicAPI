@@ -3,13 +3,14 @@ using System.Text;
 using System.Text.Json;
 using YTMusicAPI.Abstraction;
 using YTMusicAPI.Model;
+using YTMusicAPI.Model.Domain;
 using YTMusicAPI.Utils;
 
 namespace YTMusicAPI
 {
     public class SearchClient : ISearchClient
     {
-        public async Task<SearchingResult<Artist>> GetArtistsChannelsAsync(QueryRequest queryRequest,
+        public async Task<SearchingResult<Artist>> SearchArtistsChannelsAsync(QueryRequest queryRequest,
             CancellationToken cancellationToken)
         {
             var rawResult = await SendRequest(queryRequest, EntityType.Artist, cancellationToken);
@@ -40,10 +41,11 @@ namespace YTMusicAPI
                     .Select(x => x.GetProperty("musicResponsiveListItemRenderer"))
                     .ToArray();
             }
-             
+
+            List<Artist> artists = new List<Artist>();
+
             if (searchResults != null)
             {
-                List<Artist> artists = new List<Artist>();
 
                 foreach (var searchResult in searchResults)
                 {
@@ -76,19 +78,17 @@ namespace YTMusicAPI
                     artists.Add(artist);
                 }
 
-                return new SearchingResult<Artist>(artists, continuation.Value<string>(), token.Value<string>());
             }
 
-            return new SearchingResult<Artist>(new List<Artist>(), null, null);
+            return new SearchingResult<Artist>(artists, continuation.Value<string>(), token.Value<string>());
         }
 
 
-        public async Task<SearchingResult<Album>> GetAlbumsAsync(QueryRequest queryRequest, CancellationToken cancellationToken)
+        public async Task<SearchingResult<Album>> SearchAlbumsAsync(QueryRequest queryRequest, CancellationToken cancellationToken)
         {
             var rawResult = await SendRequest(queryRequest, EntityType.Album, cancellationToken);
 
             var jsonElement = ParseResponse(rawResult, out var token, out var continuation);
-
 
             JsonElement[] searchResults;
             if (queryRequest.ContinuationNeed == true)
@@ -203,6 +203,119 @@ namespace YTMusicAPI
             }
 
             return new SearchingResult<Album>(albums, continuation?.Value<string>(), token?.Value<string>());
+        }
+
+        public async Task<SearchingResult<Track>> SearchTracksAsync(QueryRequest queryRequest, CancellationToken cancellationToken)
+        {
+            var rawResult = await SendRequest(queryRequest, EntityType.Track, cancellationToken);
+
+            var jsonElement = ParseResponse(rawResult, out var token, out var continuation);
+
+            List<Track> tracks = new List<Track>();
+
+            JsonElement[] searchResults;
+            if (queryRequest.ContinuationNeed == true)
+            {
+                searchResults = jsonElement
+                    .GetPropertyOrNull("musicShelfContinuation")
+                    ?.GetProperty("contents")
+                    .EnumerateArrayOrEmpty()
+                    .ToArray();
+            }
+            else
+            {
+                searchResults = jsonElement
+                    .EnumerateDescendantProperties("contents")
+                    .LastOrDefault()
+                    .EnumerateArray()
+                    .ToArray();
+            }
+
+            if (searchResults != null)
+            {
+                foreach (var searchResult in searchResults)
+                {
+                    JObject trackJson = JObject.Parse(searchResult.ToString());
+
+                    string id;
+                    try
+                    {
+                        id = searchResult
+                            .GetPropertyOrNull("musicResponsiveListItemRenderer")?
+                            .GetPropertyOrNull("overlay")?
+                            .GetPropertyOrNull("musicItemThumbnailOverlayRenderer")?
+                            .GetPropertyOrNull("content")?
+                            .GetPropertyOrNull("musicPlayButtonRenderer")?
+                            .GetPropertyOrNull("playNavigationEndpoint")?
+                            .GetPropertyOrNull("watchEndpoint")?
+                            .GetPropertyOrNull("videoId")?
+                            .GetString();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var infos = searchResult
+                        .GetPropertyOrNull("musicResponsiveListItemRenderer")?
+                        .GetPropertyOrNull("flexColumns")
+                        ?.EnumerateArrayOrEmpty();
+
+                    var title = infos?.ElementAtOrDefault(0)
+                        .GetPropertyOrNull("musicResponsiveListItemFlexColumnRenderer")?
+                        .GetPropertyOrNull("text")?
+                        .GetPropertyOrNull("runs")?
+                        .EnumerateArrayOrEmpty()
+                        .ElementAtOrDefault(0)
+                        .GetPropertyOrNull("text")?
+                        .GetString();
+
+                    JsonElement? artistInfo = infos?.ElementAtOrDefault(1)
+                        .GetPropertyOrNull("musicResponsiveListItemFlexColumnRenderer")?
+                        .GetPropertyOrNull("text")?
+                        .GetPropertyOrNull("runs")?
+                        .EnumerateArrayOrEmpty()
+                        .ElementAtOrDefault(0);
+                    var author = artistInfo
+                        ?.GetPropertyOrNull("text")?
+                        .GetString();
+
+                    var channelId = artistInfo?.GetPropertyOrNull("navigationEndpoint")?
+                        .GetPropertyOrNull("browseEndpoint")?
+                        .GetPropertyOrNull("browseId")?
+                        .GetString();
+
+                    var thumbnails = new List<Thumbnail>();
+
+                    foreach (var thumbnailExtractor in trackJson.FindTokens("thumbnails").AsJEnumerable().Children())
+                    {
+                        var thumbnailUrl = thumbnailExtractor.FindTokens("url").Values().Last().Value<string>();
+
+                        var thumbnailWidth = thumbnailExtractor.FindTokens("width").Values().Last().Value<int>();
+
+                        var thumbnailHeight = thumbnailExtractor.FindTokens("height").Values().Last().Value<int>();
+
+                        var thumbnailResolution = new Resolution(thumbnailWidth, thumbnailHeight);
+                        var thumbnail = new Thumbnail(thumbnailUrl, thumbnailResolution);
+                        thumbnails.Add(thumbnail);
+                    }
+
+                    var track = new Track
+                    {
+                        Id = id,
+                        Title = title,
+                        Thumbnails = thumbnails,
+                        Author = author,
+                        AuthorChannelId = channelId
+                    };
+
+                    tracks.Add(track);
+                }
+            }
+
+            return new SearchingResult<Track>(tracks, continuation?.Value<string>(), token?.Value<string>());
+
+
         }
 
         private static JsonElement? GetRoot(JsonElement jsonElement)

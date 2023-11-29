@@ -1,4 +1,4 @@
-﻿namespace YTMusicAPI.Model;
+﻿namespace YTMusicAPI.Model.Domain;
 
 public class Artist
 {
