@@ -9,4 +9,6 @@ public class Track
     public string AuthorUrl => $"https://music.youtube.com/channel/{AuthorChannelId}";
     public string AuthorChannelId { get; set; }
     public IReadOnlyList<Thumbnail> Thumbnails { get; set; }
+
+    public IReadOnlyList<StreamData> Streams { get; set; }
 }
