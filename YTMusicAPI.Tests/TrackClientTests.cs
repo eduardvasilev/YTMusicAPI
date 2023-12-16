@@ -25,7 +25,7 @@ namespace YTMusicAPI.Tests
             var track = await trackClient.GetTrackInfoAsync("https://music.youtube.com/watch?v=7EqnoEljHCw", CancellationToken.None);
 
             track.Should().NotBeNull();
-            //track.Streams.Should().NotBeEmpty(); //TODO we need to get streams for implicit tracks
+            track.Streams.Should().NotBeEmpty(); //TODO we need to get streams for implicit tracks
         }
 
     }
