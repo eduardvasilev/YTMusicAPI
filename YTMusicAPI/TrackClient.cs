@@ -66,10 +66,67 @@ public class TrackClient : ITrackClient
 
         JsonElement? trackBlock = rootElement.GetPropertyOrNull("videoDetails");
 
+        var track = BuildTrack(trackBlock);
+
+        JsonElement? streamsBlock = rootElement.GetPropertyOrNull("streamingData")?.GetPropertyOrNull("formats");
+        JsonElement? status = rootElement.GetPropertyOrNull("playabilityStatus")?.GetPropertyOrNull("status");
+
+        if (streamsBlock != null)
+        {
+            var streamData = streamsBlock.Value.EnumerateArrayOrEmpty().ToArray();
+
+            List<StreamData> streams = new List<StreamData>();
+            foreach (var streamElement in streamData)
+            {
+                try
+                {
+                    StreamData stream = JsonConvert.DeserializeObject<StreamData>(streamElement.ToString());
+                    streams.Add(stream);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            track.Streams = streams;
+        }
+        else if (status?.ToString().Equals("ok", StringComparison.OrdinalIgnoreCase) != true) //age-restricted track
+        {
+            List<StreamData> streamDatas = await GetIFramePlayerAsync(trackId, cancellationToken);
+
+            if (streamDatas.Any())
+            {
+                track.Streams = streamDatas;
+            }
+        }
+
+        return track;
+    }
+
+    private static Track BuildTrack(JsonElement? trackBlock,
+        Func<JsonElement?, string> titleResolver = null, Func<JsonElement? , (string, string)> artistResolver = null)
+    {
         string id = trackBlock?.GetPropertyOrNull("videoId").ToString();
-        string title = trackBlock?.GetPropertyOrNull("title").ToString();
-        string channelId = trackBlock?.GetPropertyOrNull("channelId").ToString();
-        string author = trackBlock?.GetPropertyOrNull("author").ToString();
+        string title = titleResolver != null ? titleResolver(trackBlock) : trackBlock?.GetPropertyOrNull("title").ToString();
+       
+        string channelId;
+        string author;
+
+        if (artistResolver == null)
+        {
+            channelId = trackBlock?.GetPropertyOrNull("channelId").ToString();
+            author = trackBlock?.GetPropertyOrNull("author").ToString();
+
+        }
+        else
+        {
+            (string, string) artist = artistResolver(trackBlock);
+
+            channelId = artist.Item1;
+            author = artist.Item2;
+        }
+
         var topic = " - Topic";
         if (author != null && author.EndsWith(topic))
         {
@@ -101,44 +158,75 @@ public class TrackClient : ITrackClient
             Title = title,
             Thumbnails = thumbnails
         };
-
-        JsonElement? streamsBlock = rootElement.GetPropertyOrNull("streamingData")?.GetPropertyOrNull("formats");
-        JsonElement? status = rootElement.GetPropertyOrNull("playabilityStatus")?.GetPropertyOrNull("status");
-
-        if (streamsBlock != null)
-        {
-            var streamData = streamsBlock.Value.EnumerateArrayOrEmpty().ToArray();
-
-            List<StreamData> streams = new List<StreamData>();
-            foreach (var streamElement in streamData)
-            {
-                try
-                {
-                    StreamData stream = JsonConvert.DeserializeObject<StreamData>(streamElement.ToString());
-                    streams.Add(stream);
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-
-            track.Streams = streams;
-        }
-        else if (status?.ToString().Equals("ok", StringComparison.OrdinalIgnoreCase) != true) //age-restricted track
-        {
-            List<StreamData> streamDatas = await GetIframePlayerAsync(trackId, cancellationToken);
-
-            if (streamDatas.Any())
-            {
-                track.Streams = streamDatas;
-            }
-        }
-
         return track;
     }
 
-    private async Task<List<StreamData>> GetIframePlayerAsync(string trackId, CancellationToken cancellationToken)
+    public async Task<List<Track>> GetAlbumTracks(string albumUrl, CancellationToken cancellationToken)
+    {
+        const string url = $"https://music.youtube.com/youtubei/v1/browse?key={ApiKey}";
+
+        var payload = new
+        {
+            browseId = "VL" + AlbumHelper.GetAlbumId(albumUrl),
+            context = new
+            {
+                client = new
+                {
+                    clientName = "WEB",
+                    clientVersion = "2.20210408.08.00",
+                    hl = "en",
+                    gl = "US",
+                    utcOffsetMinutes = 0
+                }
+            }
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json")
+        };
+        string rawResult = await (new HttpSender(new HttpClient())).SendHttpRequestAsync(request, cancellationToken);
+
+        using var doc = JsonDocument.Parse(rawResult);
+        JsonElement rootElement = doc.RootElement.Clone();
+
+        List<Track> tracks = new List<Track>();
+
+        JObject trackJson = JObject.Parse(rootElement.ToString());
+
+        IJEnumerable<JToken> tracksBlock = trackJson.FindTokens("playlistVideoListRenderer").FirstOrDefault()
+            ?.FindTokens("contents").Children();
+
+        if (tracksBlock != null)
+        {
+            foreach (var trackBlock in tracksBlock)
+            {
+                JToken trackRenderer = trackBlock.FindTokens("playlistVideoRenderer").FirstOrDefault();
+                if (trackRenderer != null)
+                {
+                    var track = BuildTrack(JsonDocument.Parse(trackRenderer.ToString()).RootElement.Clone(), titleResolver:
+                        block => block?.GetPropertyOrNull("title")?.GetPropertyOrNull("runs")?.EnumerateArray()
+                            .FirstOrDefault().GetPropertyOrNull("text")?.ToString(), artist =>
+                        {
+                            var channelId = artist?.GetPropertyOrNull("shortBylineText")?.GetPropertyOrNull("runs")?.EnumerateArray()
+                                .FirstOrDefault().GetPropertyOrNull("navigationEndpoint")?.GetPropertyOrNull("browseEndpoint")?.GetPropertyOrNull("browseId")?.ToString();
+
+                            var author = artist?.GetPropertyOrNull("shortBylineText")?.GetPropertyOrNull("runs")?.EnumerateArray()
+                                .FirstOrDefault().GetPropertyOrNull("text")?.ToString();
+
+                            return (channelId,  author);
+                        });
+                    tracks.Add(track);
+                }
+            }
+        }
+        return tracks;
+    }
+
+    private async Task<List<StreamData>> GetIFramePlayerAsync(string trackId, CancellationToken cancellationToken)
     {
         List<StreamData> results = new List<StreamData>();
 
