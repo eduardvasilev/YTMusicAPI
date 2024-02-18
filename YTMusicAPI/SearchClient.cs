@@ -340,22 +340,20 @@ namespace YTMusicAPI
         
         private static async Task<string> SendRequest(QueryRequest queryRequest, EntityType entityType, CancellationToken cancellationToken)
         {
-            const string url =
-                $"https://music.youtube.com/youtubei/v1/search?key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30";
+            Uri url = new Uri($"https://music.youtube.com/youtubei/v1/search?key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30");
             var continuationData = queryRequest.ContinuationData?.ContinuationToken;
             string inputToken = queryRequest.ContinuationData?.Token;
             var payload = GetPayload(queryRequest.Query, entityType);
-            Uri uri = new Uri(url);
-            uri = queryRequest.ContinuationData?.ContinuationToken != null
-                ? uri.AddQueryParameter("ctoken", queryRequest.ContinuationData.ContinuationToken)
-                : uri;
+            url = queryRequest.ContinuationData?.ContinuationToken != null
+                ? url.AddQueryParameter("ctoken", queryRequest.ContinuationData.ContinuationToken)
+                : url;
 
-            uri = continuationData != null ? uri.AddQueryParameter("continuation", continuationData) : uri;
-            uri = inputToken != null ? uri.AddQueryParameter("itct", inputToken) : uri;
-            uri = uri.AddQueryParameter("type", "next");
+            url = continuationData != null ? url.AddQueryParameter("continuation", continuationData) : url;
+            url = inputToken != null ? url.AddQueryParameter("itct", inputToken) : url;
+            url = url.AddQueryParameter("type", "next");
 
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+            using var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(payload),
@@ -365,7 +363,7 @@ namespace YTMusicAPI
             };
             request.Headers.Add("Referer", "music.youtube.com");
 
-            var rawResult = await (new HttpSender(new HttpClient())).SendHttpRequestAsync(request, cancellationToken);
+            var rawResult = await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
             return rawResult;
         }
 

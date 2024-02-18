@@ -55,12 +55,12 @@ namespace YTMusicAPI.Tests
             SearchClient searchClient = new SearchClient();
             SearchingResult<Track> firstPage = await searchClient.SearchTracksAsync(new QueryRequest
             {
-                Query = "Nirvana"
+                Query = "Blink-182"
             }, CancellationToken.None);
 
             SearchingResult<Track> secondPage = await searchClient.SearchTracksAsync(new QueryRequest
             {
-                Query = "Nirvana",
+                Query = "Blink-182",
                 ContinuationData = new ContinuationData(firstPage.ContinuationToken, firstPage.Token),
                 ContinuationNeed = true,
 

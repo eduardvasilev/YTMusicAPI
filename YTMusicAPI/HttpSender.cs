@@ -4,6 +4,11 @@ internal class HttpSender
 {
     private readonly HttpClient _http;
 
+    public HttpSender()
+    {
+        _http = new HttpClient();
+    }
+
     public HttpSender(HttpClient http)
     {
         _http = http;
