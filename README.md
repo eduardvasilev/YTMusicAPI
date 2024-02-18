@@ -9,6 +9,7 @@ This library allows to retrieve music related data from YouTube Music. Search al
 - Search albums
 - Search tracks
 - Search artists
+- Get new releases
 - Get tracks metadata
 - Get album's tracks
 

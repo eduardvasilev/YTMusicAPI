@@ -59,7 +59,7 @@ public class TrackClient : ITrackClient
             "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip"
         );
 
-        var rawResult = await (new HttpSender(new HttpClient())).SendHttpRequestAsync(request, cancellationToken);
+        var rawResult = await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
 
         using var doc = JsonDocument.Parse(rawResult);
         JsonElement rootElement = doc.RootElement.Clone();
@@ -188,7 +188,7 @@ public class TrackClient : ITrackClient
                 Encoding.UTF8,
                 "application/json")
         };
-        string rawResult = await (new HttpSender(new HttpClient())).SendHttpRequestAsync(request, cancellationToken);
+        string rawResult = await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
 
         using var doc = JsonDocument.Parse(rawResult);
         JsonElement rootElement = doc.RootElement.Clone();
@@ -292,7 +292,7 @@ public class TrackClient : ITrackClient
                 };
 
                 var rawResult =
-                    await (new HttpSender(new HttpClient())).SendHttpRequestAsync(request, cancellationToken);
+                    await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
                 using var doc = JsonDocument.Parse(rawResult);
                 JsonElement rootElement = doc.RootElement.Clone();
 
