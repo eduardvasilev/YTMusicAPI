@@ -9,10 +9,16 @@ This library allows to retrieve music related data from YouTube Music. Search al
 - Search albums
 - Search tracks
 - Search artists
-- Get new releases
 - Get tracks metadata
 - Get album's tracks
 
+## Installation
+
+Install YTMuscAPI with nuget
+
+```bash
+dotnet add package YTMusicAPI --version 1.0.0
+```
 
 ## Usage/Examples
 
@@ -43,3 +49,5 @@ TrackClient trackClient = new TrackClient();
 var track = await trackClient.GetTrackInfoAsync("https://music.youtube.com/watch?v=EOjm4SEDMu8&si=Cx6Uv7fUm5Hv_DhB", CancellationToken.None);
 
 ```
+
+    
