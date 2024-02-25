@@ -80,7 +80,7 @@ namespace YTMusicAPI
 
             }
 
-            return new SearchingResult<Artist>(artists, continuation.Value<string>(), token.Value<string>());
+            return new SearchingResult<Artist>(artists, continuation?.Value<string>() ?? string.Empty, token?.Value<string>() ?? string.Empty);
         }
 
 
