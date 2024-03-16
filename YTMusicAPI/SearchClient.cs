@@ -21,9 +21,9 @@ namespace YTMusicAPI
             JsonElement[] searchResults;
             if (queryRequest.ContinuationNeed == true)
             {
-                root = jsonElement.GetProperty("musicShelfContinuation").GetPropertyOrNull("contents") ??
-                       jsonElement.GetProperty("musicShelfContinuation")
-                           .GetPropertyOrNull("onResponseReceivedCommands");
+                root = jsonElement.GetPropertyOrNull("musicShelfContinuation")?.GetPropertyOrNull("contents") ??
+                       jsonElement.GetPropertyOrNull("musicShelfContinuation")
+                           ?.GetPropertyOrNull("onResponseReceivedCommands");
 
                 searchResults = root?.EnumerateArray()
                     //.SelectMany(x => x)
