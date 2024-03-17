@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Title>YouTube Muisc API Client</Title>
-	<Version>1.0.2</Version>
+	<Version>1.0.3</Version>
     <Authors>Eduard Vasilev</Authors>
     <Company />
     <Description>This library allows to retrieve music related data from YouTube Music. Search albums, tracks and artists.</Description>
