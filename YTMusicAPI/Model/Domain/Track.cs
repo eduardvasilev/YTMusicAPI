@@ -12,6 +12,8 @@ public class Track
 
     public IReadOnlyList<StreamData> Streams { get; set; }
 
+    public TimeSpan? Duration { get; set; }
+
     public StreamData GetStreamWithHighestBitrate()
     {
         return Streams.MaxBy(stream => stream.Bitrate);

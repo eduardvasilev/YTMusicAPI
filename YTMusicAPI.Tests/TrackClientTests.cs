@@ -14,6 +14,7 @@ namespace YTMusicAPI.Tests
             track.Should().NotBeNull();
             track.Author.Should().Be("Kings Of Leon");
             track.Title.Should().Be("Sex on Fire");
+            track.Duration.Value.TotalSeconds.Should().Be(203);
             track.Streams.Should().NotBeEmpty();
             track.Thumbnails.Should().NotBeEmpty();
             track.AuthorUrl.Should().Be("https://music.youtube.com/channel/UCHqD2OBWbcWGmCve99uw47A");

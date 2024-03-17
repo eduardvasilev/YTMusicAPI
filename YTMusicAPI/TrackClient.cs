@@ -133,6 +133,16 @@ public class TrackClient : ITrackClient
             author = author.Substring(0, author.Length - topic.Length);
         }
 
+        JsonElement? durationField = trackBlock?.GetPropertyOrNull("lengthSeconds");
+        TimeSpan? duration = null;
+        if (durationField != null)
+        {
+            if(double.TryParse(durationField.ToString(), out double seconds))
+            {
+                duration = TimeSpan.FromSeconds(seconds);
+            }
+        }
+
         var thumbnails = new List<Thumbnail>();
 
         JObject trackJson = JObject.Parse(trackBlock.ToString());
@@ -156,7 +166,8 @@ public class TrackClient : ITrackClient
             AuthorChannelId = channelId,
             Id = id,
             Title = title,
-            Thumbnails = thumbnails
+            Thumbnails = thumbnails,
+            Duration = duration
         };
         return track;
     }
