@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using YTMusicAPI.Model.Domain;
 
 namespace YTMusicAPI.Tests
 {
@@ -32,14 +33,18 @@ namespace YTMusicAPI.Tests
         public async Task GetAlbumTracks_Success()
         {
             TrackClient trackClient = new TrackClient();
-            var track = await trackClient.GetAlbumTracks("https://music.youtube.com/playlist?list=OLAK5uy_lNf-Zf5HwjuEtV9_5oj4I3vcPT0TehuU4", CancellationToken.None);
+            var result = await trackClient.GetAlbumTracksAsync("https://music.youtube.com/playlist?list=OLAK5uy_lNf-Zf5HwjuEtV9_5oj4I3vcPT0TehuU4", CancellationToken.None);
 
-            track.Should().NotBeNull();
+            result.Should().NotBeNull();
+            List<Track> tracks = result.Tracks;
+            result.AlbumTitle.Should().Be("Laugh Track");
+            result.Thumbnails.Should().NotBeEmpty();
+            tracks.Should().NotBeNull();
 
-            track.First().Url.Should().Be("https://music.youtube.com/watch?v=YUPiIM4mZuI");
-            track.First().AuthorUrl.Should().Be("https://music.youtube.com/channel/UCeiRyLo_Q9q4tlv9aaQJF5w");
-            track.First().Title.Should().Be("Alphabet City");
-            track.First().Thumbnails.Count.Should().Be(4);
+            tracks.First().Url.Should().Be("https://music.youtube.com/watch?v=YUPiIM4mZuI");
+            tracks.First().AuthorUrl.Should().Be("https://music.youtube.com/channel/UCeiRyLo_Q9q4tlv9aaQJF5w");
+            tracks.First().Title.Should().Be("Alphabet City");
+            tracks.First().Thumbnails.Count.Should().Be(4);
         }
     }
 }

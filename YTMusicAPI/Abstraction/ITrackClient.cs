@@ -1,4 +1,5 @@
-﻿using YTMusicAPI.Model.Domain;
+﻿using YTMusicAPI.Model;
+using YTMusicAPI.Model.Domain;
 
 namespace YTMusicAPI.Abstraction;
 
@@ -19,5 +20,5 @@ public interface ITrackClient
     /// <param name="albumUrl"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    Task<List<Track>> GetAlbumTracks(string albumUrl, CancellationToken cancellationToken);
+    Task<AlbumTracksResult> GetAlbumTracksAsync(string albumUrl, CancellationToken cancellationToken);
 }

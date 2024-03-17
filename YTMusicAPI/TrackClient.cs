@@ -161,7 +161,7 @@ public class TrackClient : ITrackClient
         return track;
     }
 
-    public async Task<List<Track>> GetAlbumTracks(string albumUrl, CancellationToken cancellationToken)
+    public async Task<AlbumTracksResult> GetAlbumTracksAsync(string albumUrl, CancellationToken cancellationToken)
     {
         const string url = $"https://music.youtube.com/youtubei/v1/browse?key={ApiKey}";
 
@@ -223,7 +223,43 @@ public class TrackClient : ITrackClient
                 }
             }
         }
-        return tracks;
+
+        JToken header = trackJson.FindTokens("header")?.FirstOrDefault();
+        List<JToken> titleBlock = header?.FindTokens("playlistHeaderRenderer")
+            ?.FirstOrDefault()?.FindTokens("title")?.FirstOrDefault()
+            ?.FindTokens("simpleText");
+        string title = null;
+        if (titleBlock != null && titleBlock.Any())
+        {
+            title = titleBlock.FirstOrDefault()?.Value<string>();
+
+            var albumPrefix = "Album - ";
+            if (title != null && title.StartsWith(albumPrefix))
+            {
+                title = title.Substring(albumPrefix.Length);
+            }
+        }
+        var thumbnails = new List<Thumbnail>();
+
+        foreach (var thumbnailExtractor in header.FindTokens("thumbnails").AsJEnumerable().Children())
+        {
+            var thumbnailUrl = thumbnailExtractor.FindTokens("url").Values().Last().Value<string>();
+
+            var thumbnailWidth = thumbnailExtractor.FindTokens("width").Values().Last().Value<int>();
+
+            var thumbnailHeight = thumbnailExtractor.FindTokens("height").Values().Last().Value<int>();
+
+            var thumbnailResolution = new Resolution(thumbnailWidth, thumbnailHeight);
+            var thumbnail = new Thumbnail(thumbnailUrl, thumbnailResolution);
+            thumbnails.Add(thumbnail);
+        }
+
+        return new AlbumTracksResult
+        {
+            AlbumTitle = title,
+            Tracks = tracks,
+            Thumbnails = thumbnails
+        };
     }
 
     private async Task<List<StreamData>> GetIFramePlayerAsync(string trackId, CancellationToken cancellationToken)
