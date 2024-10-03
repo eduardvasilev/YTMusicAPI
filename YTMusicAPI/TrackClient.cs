@@ -26,7 +26,7 @@ public class TrackClient : ITrackClient
         if (!string.IsNullOrWhiteSpace(value))
             trackId = value;
 
-        const string url = $"https://music.youtube.com/youtubei/v1/player?key={ApiKey}";
+        const string url = $"https://music.youtube.com/youtubei/v1/player";
 
         var payload = new
         {
@@ -35,10 +35,15 @@ public class TrackClient : ITrackClient
             {
                 client = new
                 {
-                    clientName = "ANDROID_TESTSUITE",
-                    clientVersion = "1.9",
-                    androidSdkVersion = 30,
+                    clientName = "IOS",
+                    clientVersion = "19.29.1",
+                    deviceMake = "Apple",
+                    deviceModel = "iPhone16,2",
                     hl = "en",
+                    osName = "iPhone",
+                    osVersion = "17.5.1.21F90",
+                    timeZone = "UTC",
+                    userAgent = "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
                     gl = "US",
                     utcOffsetMinutes = 0
                 }
@@ -56,7 +61,7 @@ public class TrackClient : ITrackClient
 
         request.Headers.Add(
             "User-Agent",
-            "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip"
+            "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)"
         );
 
         var rawResult = await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
@@ -68,7 +73,7 @@ public class TrackClient : ITrackClient
 
         var track = BuildTrack(trackBlock);
 
-        JsonElement? streamsBlock = rootElement.GetPropertyOrNull("streamingData")?.GetPropertyOrNull("formats");
+        JsonElement? streamsBlock = rootElement.GetPropertyOrNull("streamingData")?.GetPropertyOrNull("adaptiveFormats");
         JsonElement? status = rootElement.GetPropertyOrNull("playabilityStatus")?.GetPropertyOrNull("status");
 
         if (streamsBlock != null)
