@@ -18,8 +18,21 @@ namespace YTMusicAPI.Tests
             track.Streams.Should().NotBeEmpty();
             track.Thumbnails.Should().NotBeEmpty();
             track.AuthorUrl.Should().Be("https://music.youtube.com/channel/UCHqD2OBWbcWGmCve99uw47A");
-        } 
-        
+        }
+
+        [Theory]
+        [InlineData("https://music.youtube.com/watch?v=EOjm4SEDMu8&si=Cx6Uv7fUm5Hv_DhB")]
+        [InlineData("https://music.youtube.com/watch?v=s7zAeMGOa2M&si=gOYGEDRPskA2Czx6")]
+        [InlineData("https://music.youtube.com/watch?v=5eHkjPCGXKQ&si=4SPVRuWGCH-RJhCG")]
+        public async Task GetTrackInfo_HasStreams(string url)
+        {
+            TrackClient trackClient = new TrackClient();
+            var track = await trackClient.GetTrackInfoAsync(url, CancellationToken.None);
+
+            track.Should().NotBeNull();
+            track.Streams.Should().NotBeEmpty();
+        }
+
         [Fact]
         public async Task GetTrackInfo_TrackIsExplicit_Success()
         {

@@ -26,7 +26,7 @@ public class TrackClient : ITrackClient
         if (!string.IsNullOrWhiteSpace(value))
             trackId = value;
 
-        const string url = $"https://music.youtube.com/youtubei/v1/player";
+        const string url = $"https://www.youtube-nocookie.com/youtubei/v1/player";
 
         var payload = new
         {
@@ -36,16 +36,21 @@ public class TrackClient : ITrackClient
                 client = new
                 {
                     clientName = "IOS",
-                    clientVersion = "19.29.1",
+                    clientVersion = "19.45.4",
                     deviceMake = "Apple",
                     deviceModel = "iPhone16,2",
+                    platform = "MOBILE",
+                    osName = "IOS",
+                    osVersion = "18.1.0.22B83",
                     hl = "en",
-                    osName = "iPhone",
-                    osVersion = "17.5.1.21F90",
                     timeZone = "UTC",
-                    userAgent = "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
+                    userAgent = "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)",
                     gl = "US",
                     utcOffsetMinutes = 0
+                },
+                request = new
+                {
+                    useSsl = true,
                 }
             }
         };
@@ -61,8 +66,28 @@ public class TrackClient : ITrackClient
 
         request.Headers.Add(
             "User-Agent",
-            "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)"
+            "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)"
         );
+
+        request.Headers.Add(
+      "x-youtube-bootstrap-logged-in",
+      "false"
+  );
+
+        request.Headers.Add(
+"x-goog-visitor-id",
+"CgtNRHRZVS15dEp3ayjc4Zy9BjIiCgJOTBIcEhgSFhMLFBUWFwwYGRobHB0eHw4PIBAREiEgZw%3D%3D"
+);
+
+        request.Headers.Add(
+"x-youtube-client-name",
+"56"
+);
+
+        request.Headers.Add(
+"x-youtube-client-version",
+"1.20250203.01.00"
+);
 
         var rawResult = await (new HttpSender()).SendHttpRequestAsync(request, cancellationToken);
 
@@ -150,6 +175,7 @@ public class TrackClient : ITrackClient
 
         var thumbnails = new List<Thumbnail>();
 
+        var trackBlocks = trackBlock.ToString();
         JObject trackJson = JObject.Parse(trackBlock.ToString());
 
         foreach (var thumbnailExtractor in trackJson.FindTokens("thumbnails").AsJEnumerable().Children())
