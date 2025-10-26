@@ -35,16 +35,16 @@ public class TrackClient : ITrackClient
             {
                 client = new
                 {
-                    clientName = "IOS",
-                    clientVersion = "19.45.4",
-                    deviceMake = "Apple",
-                    deviceModel = "iPhone16,2",
+                    clientName = "ANDROID",
+                    clientVersion = "20.10.38",
+                    //deviceMake = "Apple",
+                    //deviceModel = "iPhone16,2",
                     platform = "MOBILE",
-                    osName = "IOS",
-                    osVersion = "18.1.0.22B83",
+                    osName = "Android",
+                    osVersion = "11",
                     hl = "en",
                     timeZone = "UTC",
-                    userAgent = "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)",
+                    userAgent = "com.google.android.youtube/20.10.38 (Linux; U; ANDROID 11) gzip",
                     gl = "US",
                     utcOffsetMinutes = 0
                 },
@@ -66,7 +66,7 @@ public class TrackClient : ITrackClient
 
         request.Headers.Add(
             "User-Agent",
-            "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)"
+            "com.google.android.youtube/20.10.38 (Linux; U; ANDROID 11) gzip"
         );
 
         request.Headers.Add(
