@@ -17,7 +17,7 @@ This library allows to retrieve music related data from YouTube Music. Search al
 Install YTMuscAPI with nuget
 
 ```bash
-dotnet add package YTMusicAPI --version 1.0.0
+dotnet add package YTMusicAPI
 ```
 
 ## Usage/Examples
