@@ -236,74 +236,207 @@ public class TrackClient : ITrackClient
         JsonElement rootElement = doc.RootElement.Clone();
 
         List<Track> tracks = new List<Track>();
+        List<Thumbnail> albumThumbnails = new List<Thumbnail>();
+        string albumTitle = null;
 
         JObject trackJson = JObject.Parse(rootElement.ToString());
 
-        IJEnumerable<JToken> tracksBlock = trackJson.FindTokens("playlistVideoListRenderer").FirstOrDefault()
-            ?.FindTokens("contents").Children();
+        var contentsToken = trackJson.FindTokens("contents")
+            .FirstOrDefault(t => t.Type == JTokenType.Array || t.Type == JTokenType.Object);
 
-        if (tracksBlock != null)
+        if (contentsToken != null)
         {
-            foreach (var trackBlock in tracksBlock)
+            var lockupViewModels = contentsToken.FindTokens("lockupViewModel").ToList();
+
+            foreach (var lockupViewModel in lockupViewModels)
             {
-                JToken trackRenderer = trackBlock.FindTokens("playlistVideoRenderer").FirstOrDefault();
-                if (trackRenderer != null)
+                try
                 {
-                    var track = BuildTrack(JsonDocument.Parse(trackRenderer.ToString()).RootElement.Clone(), titleResolver:
-                        block => block?.GetPropertyOrNull("title")?.GetPropertyOrNull("runs")?.EnumerateArray()
-                            .FirstOrDefault().GetPropertyOrNull("text")?.ToString(), artist =>
+                    var contentId = lockupViewModel.FindTokens("contentId").FirstOrDefault()?.Value<string>();
+
+                    var title = lockupViewModel
+                        .FindTokens("metadata")
+                        .FirstOrDefault()?
+                        .FindTokens("lockupMetadataViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("title")
+                        .FirstOrDefault()?
+                        .FindTokens("content")
+                        .FirstOrDefault()?
+                        .Value<string>();
+
+                    var authorData = lockupViewModel
+                        .FindTokens("metadata")
+                        .FirstOrDefault()?
+                        .FindTokens("lockupMetadataViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("metadata")
+                        .FirstOrDefault()?
+                        .FindTokens("contentMetadataViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("metadataRows")
+                        .FirstOrDefault()?
+                        .FindTokens("metadataParts")
+                        .FirstOrDefault()?
+                        .FindTokens("text")
+                        .FirstOrDefault()?
+                        .FindTokens("content")
+                        .FirstOrDefault()?
+                        .Value<string>();
+
+                    string channelId = null;
+                    string author = authorData;
+
+                    var channelIdToken = lockupViewModel
+                        .FindTokens("decoratedAvatarViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("rendererContext")
+                        .FirstOrDefault()?
+                        .FindTokens("commandContext")
+                        .FirstOrDefault()?
+                        .FindTokens("onTap")
+                        .FirstOrDefault()?
+                        .FindTokens("innertubeCommand")
+                        .FirstOrDefault()?
+                        .FindTokens("browseEndpoint")
+                        .FirstOrDefault()?
+                        .FindTokens("browseId")
+                        .FirstOrDefault()?
+                        .Value<string>();
+
+                    if (!string.IsNullOrEmpty(channelIdToken))
+                    {
+                        channelId = channelIdToken;
+                    }
+
+                    var durationText = lockupViewModel
+                        .FindTokens("thumbnailBadgeViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("text")
+                        .FirstOrDefault()?
+                        .Value<string>();
+
+                    TimeSpan? duration = null;
+                    if (!string.IsNullOrEmpty(durationText))
+                    {
+                        if (TimeSpan.TryParse(durationText, out var parsedDuration))
                         {
-                            var channelId = artist?.GetPropertyOrNull("shortBylineText")?.GetPropertyOrNull("runs")?.EnumerateArray()
-                                .FirstOrDefault().GetPropertyOrNull("navigationEndpoint")?.GetPropertyOrNull("browseEndpoint")?.GetPropertyOrNull("browseId")?.ToString();
+                            duration = parsedDuration;
+                        }
+                    }
 
-                            var author = artist?.GetPropertyOrNull("shortBylineText")?.GetPropertyOrNull("runs")?.EnumerateArray()
-                                .FirstOrDefault().GetPropertyOrNull("text")?.ToString();
+                    var trackThumbnails = new List<Thumbnail>();
+                    var thumbnailSources = lockupViewModel
+                        .FindTokens("thumbnailViewModel")
+                        .FirstOrDefault()?
+                        .FindTokens("image")
+                        .FirstOrDefault()?
+                        .FindTokens("sources")
+                        .AsJEnumerable()
+                        .Children();
 
-                            return (channelId,  author);
-                        });
-                    tracks.Add(track);
+                    if (thumbnailSources != null)
+                    {
+                        foreach (var source in thumbnailSources)
+                        {
+                            var thumbNailUrl = source.FindTokens("url").FirstOrDefault()?.Value<string>();
+                            var width = source.FindTokens("width").FirstOrDefault()?.Value<int?>();
+                            var height = source.FindTokens("height").FirstOrDefault()?.Value<int?>();
+
+                            if (!string.IsNullOrEmpty(thumbNailUrl) && width.HasValue && height.HasValue)
+                            {
+                                var resolution = new Resolution(width.Value, height.Value);
+                                trackThumbnails.Add(new Thumbnail(thumbNailUrl, resolution));
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(contentId) && !string.IsNullOrEmpty(title))
+                    {
+                        if (author != null && author.EndsWith(" - Topic"))
+                        {
+                            author = author.Substring(0, author.Length - " - Topic".Length);
+                        }
+
+                        var track = new Track
+                        {
+                            Id = contentId,
+                            Title = title,
+                            Author = author,
+                            AuthorChannelId = channelId,
+                            Duration = duration,
+                            Thumbnails = trackThumbnails
+                        };
+
+                        tracks.Add(track);
+                    }
+                }
+                catch
+                {
+                    continue;
                 }
             }
         }
 
-        JToken header = trackJson.FindTokens("header")?.FirstOrDefault();
-        List<JToken> titleBlock = header?.FindTokens("playlistHeaderRenderer")
-            ?.FirstOrDefault()?.FindTokens("title")?.FirstOrDefault()
-            ?.FindTokens("simpleText");
-        string title = null;
-        if (titleBlock != null && titleBlock.Any())
+        var headerToken = trackJson.FindTokens("header")?.FirstOrDefault();
+        if (headerToken != null)
         {
-            title = titleBlock.FirstOrDefault()?.Value<string>();
+            var titleToken = headerToken
+                .FindTokens("playlistHeaderRenderer")
+                .FirstOrDefault()?
+                .FindTokens("title")
+                .FirstOrDefault()?
+                .FindTokens("simpleText")
+                .FirstOrDefault()?
+                .Value<string>();
 
-            var albumPrefix = "Album - ";
-            if (title != null && title.StartsWith(albumPrefix))
+            if (!string.IsNullOrEmpty(titleToken))
             {
-                title = title.Substring(albumPrefix.Length);
+                albumTitle = titleToken;
+                var albumPrefix = "Album - ";
+                if (albumTitle.StartsWith(albumPrefix))
+                {
+                    albumTitle = albumTitle.Substring(albumPrefix.Length);
+                }
             }
-        }
-        var thumbnails = new List<Thumbnail>();
 
-        foreach (var thumbnailExtractor in header.FindTokens("thumbnails").AsJEnumerable().Children())
-        {
-            var thumbnailUrl = thumbnailExtractor.FindTokens("url").Values().Last().Value<string>();
+            var thumbnailTokens = headerToken
+                .FindTokens("playlistHeaderRenderer")
+                .FirstOrDefault()?
+                .FindTokens("playlistHeaderBanner")
+                .FirstOrDefault()?
+                .FindTokens("heroPlaylistThumbnailRenderer")
+                .FirstOrDefault()?
+                .FindTokens("thumbnail")
+                .FirstOrDefault()?
+                .FindTokens("thumbnails")
+                .AsJEnumerable()
+                .Children();
 
-            var thumbnailWidth = thumbnailExtractor.FindTokens("width").Values().Last().Value<int>();
+            if (thumbnailTokens != null)
+            {
+                foreach (var thumbToken in thumbnailTokens)
+                {
+                    var thumbNailUrl = thumbToken.FindTokens("url").FirstOrDefault()?.Value<string>();
+                    var width = thumbToken.FindTokens("width").FirstOrDefault()?.Value<int?>();
+                    var height = thumbToken.FindTokens("height").FirstOrDefault()?.Value<int?>();
 
-            var thumbnailHeight = thumbnailExtractor.FindTokens("height").Values().Last().Value<int>();
-
-            var thumbnailResolution = new Resolution(thumbnailWidth, thumbnailHeight);
-            var thumbnail = new Thumbnail(thumbnailUrl, thumbnailResolution);
-            thumbnails.Add(thumbnail);
+                    if (!string.IsNullOrEmpty(thumbNailUrl) && width.HasValue && height.HasValue)
+                    {
+                        var resolution = new Resolution(width.Value, height.Value);
+                        albumThumbnails.Add(new Thumbnail(thumbNailUrl, resolution));
+                    }
+                }
+            }
         }
 
         return new AlbumTracksResult
         {
-            AlbumTitle = title,
+            AlbumTitle = albumTitle ?? "Unknown Album",
             Tracks = tracks,
-            Thumbnails = thumbnails
+            Thumbnails = albumThumbnails
         };
     }
-
     private async Task<List<StreamData>> GetIFramePlayerAsync(string trackId, CancellationToken cancellationToken)
     {
         List<StreamData> results = new List<StreamData>();
