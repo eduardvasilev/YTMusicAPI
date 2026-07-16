@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -319,7 +320,7 @@ public class TrackClient : ITrackClient
                     TimeSpan? duration = null;
                     if (!string.IsNullOrEmpty(durationText))
                     {
-                        if (TimeSpan.TryParse(durationText, out var parsedDuration))
+                        if (TimeSpan.TryParseExact(durationText, @"m\:ss", CultureInfo.InvariantCulture, out var parsedDuration))
                         {
                             duration = parsedDuration;
                         }
